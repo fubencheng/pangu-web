@@ -22,7 +22,7 @@
               <router-link to="/qa"><Icon type="help" size="20"></Icon>&nbsp;&nbsp;<span>问答</span></router-link>
             </li>
             <li>
-              <router-link to="/"><Icon type="videocamera" size="20"></Icon>&nbsp;&nbsp;<span>讲堂</span></router-link>
+              <router-link to="/course"><Icon type="videocamera" size="20"></Icon>&nbsp;&nbsp;<span>讲堂</span></router-link>
             </li>
           </ul>
         </div>
