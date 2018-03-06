@@ -10,8 +10,20 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "axios": "^0.18.0",
+    "babel-polyfill": "^6.26.0",
+    "iview": "^2.9.2",
+    "jQuery": "^1.7.4",
+    "nprogress": "^0.2.0",
+    "sass": "^1.0.0-beta.5.3",
+    "scss": "^0.2.4",
+    "videojs-contrib-hls": "^5.12.2",
     "vue": "^2.5.2",
-    "vue-router": "^3.0.1"
+    "vue-router": "^3.0.1",
+    "vue-video-player": "^5.0.2",
+    "vuex": "^3.0.1",
+    "wangeditor": "^3.0.16",
+    "xss": "^0.3.7"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",
