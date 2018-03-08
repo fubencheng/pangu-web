@@ -50,7 +50,7 @@
 
 <script>
   import axios from "axios";
-//  import UserAPI from "@/api/UserAPI";
+  import UserAPI from "@/api/UserAPI";
   import Footer from "@/components/Footer"
   export default {
     data () {
@@ -67,18 +67,21 @@
     },
     methods: {
       getUserName() {
-//        axios.get(UserAPI.current_user).then((resp) => {
-//          if(resp.data.userInfo.isAdmin){
-//            this.isshow=true;
-//          }
-//          this.userName = resp.data.userInfo.name;
-//        });
+        axios.get(UserAPI.user_info).then((resp) => {
+          if (resp.data.code === '000') {
+            this.isAdmin = resp.data.result.isAdmin;
+            this.userName = resp.data.result.name;
+          }
+        });
       },
       logout() {
-//        axios.get(UserAPI.logout).then((resp) => {
-//          this.userName = null;
-//          this.$router.push("/logout");
-//        });
+        axios.get(UserAPI.logout).then((resp) => {
+          if (resp.data.code === '000') {
+            this.userName = '';
+            this.isAdmin = false;
+            this.$router.push("/logout");
+          }
+        });
       },
       gotoAdministration(){
         this.$router.push('/course/my/list')

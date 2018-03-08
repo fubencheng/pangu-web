@@ -8,6 +8,7 @@
 
 <script>
 export default {
+  name: 'QaCategory',
   props: {
     'sortData': Array,
     'defaultIndex': Number
