@@ -110,10 +110,11 @@
             ops: ops
           }).then((resp)=>{
             if (resp.data.code === '000') {
-              if (ops === '0'){
+              console.log(resp.data.code + "=" + ops);
+              if (ops === 0){
                 this.$router.push("/qa/question/detail/" + questionId);
               }
-              if (ops === '1' || ops === '-1'){
+              if (ops === 1 || ops === -1){
                 this.fetchQuestionList();
               }
             } else {

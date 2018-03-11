@@ -67,13 +67,13 @@
                 @on-ok="onSubmitComment(answer)"
                 @on-cancel="cancelReply(answer)"
                 ok-text="提交"
-                v-model="modal10"
+                v-model="commentModel"
                 class-name="vertical-center-modal">
                 <Input class="commit-area" v-model="reply" type="textarea" :rows="4" placeholder="请输入您的评论......"></Input>
               </Modal>
               <!-- 顶踩 -->
               <div class="evaluate-list">
-                <Button @click="modal10=true,commentReply(answer)" class="evaluate-pinglun">
+                <Button @click="commentModel=true,commentReply(answer)" class="evaluate-pinglun">
                   <Icon type="compose" size="20" style="line-height:10px;"></Icon>
                 </Button>
                 <Button class="evaluate-block" @click="signAnswer(answer.id, 1)">顶{{answer.likes}}</Button>
@@ -110,12 +110,9 @@
                   <li class="reply-body-content">{{comment.comment}}</li>
                   <li class="reply-body-date">回复时间：{{comment.gmtCreated}}</li>
                   <li class="btn-reply">
-                    <Button type="primary" @click="modal11 = true,onReply(answer,comment.id)">@TA</Button>
-                    <Modal
-                      v-model="modal11"
-                      @on-ok="onSubmitComment(answer)"
-                      @on-cancel="cancelReply(answer)"
-                    >
+                    <Button type="primary" @click="commentReplyModel = true,onReply(answer,comment.id)">@TA</Button>
+                    <Modal v-model="commentReplyModel" @on-ok="onSubmitComment(answer)"
+                      @on-cancel="cancelReply(answer)">
                       <div class="PopUp-title">
                         <span class="title"><span>回复</span>{{comment.userName}}</span>
                       </div>
@@ -184,16 +181,15 @@
         currentThumbUp: 0,
         currentThumbDown: 0,
         currentAnswers: 0,
-        modal10: false,
-        modal11: false,
-        orderIndex: "",
-        answerList: [],
         pageNum: 1,
-        pageSize: 500,
+        pageSize: 10,
+        orderIndex: 1,
+        commentModel: false,
+        commentReplyModel: false,
+        answerList: [],
         reply: "",
         replyToCommentId: null,
         currentCommentAnswerId: "",
-        length:0,
       };
     },
     mounted() {
@@ -203,21 +199,18 @@
       this.fetchAnswerList();
     },
     methods: {
-      signQuestion(eventType) {
-        axios
-          .post(ZhidaoAPI.sign_question, {
+      signQuestion(ops) {
+        axios.post(QaAPI.sign_question, {
             questionId: this.$route.params.id,
-            eventType: eventType
-          })
-          .then((resp) => {
-            if (eventType == 1 && resp.data.code == "00") {
+            ops: ops
+          }).then((resp) => {
+            if (ops == 1 && resp.data.code == "00") {
               this.currentThumbUp += 1;
             }
-            if (eventType == -1 && resp.data.code == "00") {
+            if (ops == -1 && resp.data.code == "00") {
               this.currentThumbDown += 1;
             }
-          })
-          .catch((error) => {
+          }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
       },
@@ -240,15 +233,15 @@
       fetchAnswerList() {
         axios.get(QaAPI.fetch_answer_list, {
             params: {
-              questionId: this.$route.params.id,
+              questionId: this.$route.params.questionId,
               pageNum: this.pageNum,
               pageSize: this.pageSize,
               orderIndex: this.orderIndex
             }
-          })
-          .then((resp) => {
-            let originalAnswerArray = resp.data.respObject.answerList;
-            this.answerList.splice(0, this.answerList.length); //清空数组
+          }).then((resp) => {
+            let originalAnswerArray = resp.data.elements;
+            //清空数组
+            this.answerList.splice(0, this.answerList.length);
             for (let i = 0; i < originalAnswerArray.length; i++) {
               let originalAnswer = originalAnswerArray[i];
               originalAnswer.commentList = [];
@@ -256,8 +249,7 @@
               originalAnswer.isReplyAreaShow = false;
               this.answerList.push(originalAnswer);
             }
-          })
-          .catch((error) => {
+          }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
       },
@@ -271,31 +263,29 @@
           this.$Message.warning("写点东西呗");
           return;
         }
-        axios
-          .post(ZhidaoAPI.save_answer, {
-            questionId: this.$route.params.id,
+        axios.post(QaAPI.save_answer, {
+            questionId: this.$route.params.questionId,
             answer: content
-          })
-          .then((resp) => {
-            editor.txt.clear();
-            this.fetchAnswerList();
-            this.currentAnswers += 1;
-            this.$Message.success("提交成功");
-          })
-          .catch((error) => {
+          }).then((resp) => {
+            if (resp.data.code === '000'){
+              editor.txt.clear();
+              this.fetchAnswerList();
+              this.currentAnswers += 1;
+              this.$Message.success("提交成功");
+            }
+          }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
       },
-      signAnswer(answerId, eventType) {
-        axios
-          .post(ZhidaoAPI.sign_answer, {
+      signAnswer(answerId, ops) {
+        axios.post(QaAPI.sign_answer, {
             answerId: answerId,
-            eventType: eventType
-          })
-          .then(resp => {
-            this.fetchAnswerList();
-          })
-          .catch(function(error) {
+            ops: ops
+          }).then(resp => {
+            if (resp.data.code === '000') {
+              this.fetchAnswerList();
+            }
+          }).catch(function(error) {
             this.$Message.error("操作失败【" + error + "】");
           });
       },
@@ -308,20 +298,19 @@
         }
       },
       fetchAnswerComment(answer) {
-        axios
-          .get(ZhidaoAPI.fetch_answer_comment_list, {
+        axios.get(QaAPI.fetch_answer_comment_list, {
             params: {
               answerId: answer.id,
               pageNum: this.pageNum,
               pageSize: this.pageSize
             }
-          })
-          .then((resp) => {
-            answer.commentList = resp.data.commentList;
-            answer.isCommentAreaShow = true;
-            answer.isReplyAreaShow = true;
-          })
-          .catch((error) => {
+          }).then((resp) => {
+            if (resp.data.code === '000') {
+              answer.commentList = resp.data.elements;
+              answer.isCommentAreaShow = true;
+              answer.isReplyAreaShow = true;
+            }
+          }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
       },
@@ -333,26 +322,22 @@
         this.reply = "";
         answer.isReplyAreaShow = false;
       },
-      RefreshThis() {
-        this.fetchQuestionDetail();
-        this.fetchAnswerList();
-      },
       onSubmitComment(answer) {
         if (this.reply == "") {
           this.$Message.warning("请填写评论内容");
           return;
         }
-        axios
-          .post(ZhidaoAPI.save_comment, {
+        axios.post(QaAPI.save_answer_comment, {
             answerId: this.currentCommentAnswerId,
             comment: this.reply,
             replyToCommentId: this.replyToCommentId
-          })
-          .then((resp) => {
-            this.RefreshThis();
-            this.reply = "";
-          })
-          .catch((error) => {
+          }).then((resp) => {
+            if (resp.data.code === '000') {
+              this.fetchQuestionDetail();
+              this.fetchAnswerList();
+              this.reply = "";
+            }
+          }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
     },
@@ -361,308 +346,326 @@
 </script>
 
 <style scoped>
-.container {
-  width: 100vw;
-  box-sizing: content-box;
-  background: #f4f4f4;
-  margin-bottom: 60px;
-}
-img {
-  width: 100%;
-  height: 100%;
-}
-.box {
-  width: 72vw;
-  height: auto;
-  background-color: #fff;
-  box-sizing: border-box;
-  margin-top: 60px;
-}
-.article {
-  width: 70vw;
-  margin-top: 20px;
-  font-size: 14px;
-  color: #333;
-  padding: 0 20px 15px 20px;
-  border-bottom: 1px dashed #e4e4e4;
-}
-dl,
-dt {
-  line-height: 3;
-  font-size: 20px;
-}
-dd.article-content {
-  font-size: 16px;
-}
-dd.article-info {
-  margin-top: 20px;
-  font-size: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-dd.article-info-user i {
-  color: #999;
-  margin-left: 20px;
-}
-em {
-  margin-left: 6px;
-}
-.comment {
-  font-size: 14px;
-  padding: 0 20px;
-}
-.comment-info {
-  width: 60vw;
-  margin-left: 7.5vw;
-  position: relative;
-}
-.filter-dropdown {
-  float: right;
-  margin-left: 95%;
-  margin-top: -100px;
-}
-.filter-dropdown:hover {
-  color: #333;
-}
-.filter-dropdown:last-child {
-  margin-right: 0;
-}
-.filter-dropdown-title {
-  display: block;
-  color: #666;
-}
-span {
-  display: inline-block;
-  vertical-align: middle;
-}
-i {
-  display: inline-block;
-  vertical-align: middle;
-}
-.filter-dropdown-list {
-  text-align: center;
-  margin-top: -30px;
-  float: right;
-  background-color: #fff;
-  border-left: 1px solid #e1e1e1;
-  border-top: 1px solid #e1e1e1;
-  border-right: 1px solid #e1e1e1;
-  z-index: 1000;
-}
-span {
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 10px;
-}
-i {
-  display: inline-block;
-  vertical-align: middle;
-  font-size: 12px;
-}
-.comment-list {
-  width: 70vw;
-  margin-top: 50px;
-}
-.content-header {
-  width: 70vw;
-  height: auto;
-  color: #666;
-  position: relative;
-  margin-top: -30px;
-  padding-left: 5px;
-  box-sizing: content-box;
-  border: 1px solid #e4e4e4;
-}
-.user-info{
-  width: 5vw;
-  height: auto;
-  padding-bottom: 20px;
-  text-align: center;
-}
-.photo-user-list{
-  margin: 0 auto;
-}
-.username-list{
-  margin-bottom: 30px;
-  text-align: center;
-}
-.evaluate-list{
-  width: 10vw;
-  height: auto;
-  float: right;
-  margin-right: 4vw;
-  margin-top: -130px;
-  display: flex;
-  justify-content: space-between;
-}
-.evaluate-list .evaluate-block {
-  font-size: .85rem;
-  margin-left:5px;
-  cursor: pointer;
-  line-height: 10px;
-  width: 70px;
-  height: 30px;
-  outline: none;
-  margin-top: 10px;
-  border-radius: 10px;
-  background-color: #fff;
-  border: 1px solid #e4e4e4;
-}
-.evaluate-list .evaluate-pinglun {
-  width: 70px;
-  height: 30px;
-  margin-top: 10px;
-  margin-left: 5px;
-  background-color: #fff;
-  border-radius: 10px;
-}
-.content-overflow {
-  width: 68vw;
-  margin-left: -2vw;
-}
-.evaluate {
-  float: right;
-  margin-top: 50%;
-  margin-right: 50px;
-}
-.evaluate .evaluate-block {
-  width: 70px;
-  height: 30px;
-  font-size: 12px;
-  margin-left: 10px;
-  border: 1px solid #999;
-  cursor: pointer;
-  margin-top: 40px;
-  line-height: 30px;
-  border-radius: 10px;
-  background-color: #fff;
-  outline: none;
-  border: 1px solid #e4e4e4;
-}
-.arrow {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  margin-left: -10px;
-  top: 18px;
-  background-color: #f1f1f1;
-  border-top: 1px solid #e7e7e7;
-  border-left: 1px solid #e7e7e7;
-  transform: rotate(-45deg);
-}
-.reply-normal {
-  width: 70vw;
-  border-bottom: 1px solid #eee;
-}
-.content-body {
-  width: 50vw;
-  height: auto;
-  color: #666;
-  margin-left: 5vw;
-  margin-top: -130px;
-  border-left: 1px solid #e4e4e4;
-  border-right: 1px solid #e4e4e4;
-}
-.content-body-text{
-  width: 50vw;
-  word-wrap:break-word;
-  padding: 10px 10px 0px 10px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.content-body-info {
-  margin-top: 20px;
-  padding-left: 10px;
-}
-img {
-  width: 100%;
-}
-.info-comment {
-  cursor: pointer;
-}
-.content-reply {
-  width: 70vw;
-  margin: 0 auto;
-  border-top: 1px solid #e7e7e7;
-  position: relative;
-  background-color: #fff;
-}
-.arrow {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  top: -7px;
-  right: 30px;
-  background-color: #f1f1f1;
-  border-top: 1px solid #e7e7e7;
-  border-left: 1px solid #e7e7e7;
-  transform: rotate(45deg);
-}
-.reply {
-  padding: 20px 20px 10px 20px;
-}
-.reply-body {
-  margin-top: -50px;
-  margin-left: 8vw;
-}
-.reply-overflow {
-  color: #333;
-  position: relative;
-  margin-top: -10px;
-}
-.photo-user{
-  margin-left: 5vw;
-}
-.reply-body-name em {
-  margin: 0 10px;
-  color: #999;
-}
+  .container {
+    width: 100vw;
+    box-sizing: content-box;
+    background: #f4f4f4;
+    margin-bottom: 60px;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+  }
+  .box {
+    width: 72vw;
+    height: auto;
+    margin: 0 auto;
+    background-color: #fff;
+    box-sizing: border-box;
+    margin-top: 60px;
+  }
+  .article {
+    width: 70vw;
+    margin: 0 auto;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #333;
+    padding: 0 20px 15px 20px;
+    border-bottom: 1px dashed #e4e4e4;
+  }
+  dl,
+  dt {
+    line-height: 3;
+    font-size: 20px;
+  }
+  dd.article-content {
+    font-size: 16px;
+  }
+  dd.article-info {
+    margin-top: 20px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  dd.article-info-user i {
+    color: #999;
+    margin-left: 20px;
+  }
+  em {
+    margin-left: 6px;
+  }
+  em.active {
+    color: #ff9933;
+  }
+  .comment {
+    font-size: 14px;
+    padding: 0 20px;
+  }
+  .comment-info {
+    width: 60vw;
+    margin-left: 7.5vw;
+    position: relative;
+  }
+  .comment-info .answer-num {
+    float: right;
+    padding-top: 20px;
+    margin-right: 10px;
+  }
+  .filter-dropdown {
+    float: right;
+    margin-left: 95%;
+    margin-top: -100px;
+  }
+  .filter-dropdown:hover {
+    color: #333;
+  }
+  .filter-dropdown:last-child {
+    margin-right: 0;
+  }
+  .filter-dropdown-title {
+    display: block;
+    color: #666;
+  }
+  .filter-dropdown-title.active {
+    color: #ff9933;
+  }
+  span {
+    display: inline-block;
+    vertical-align: middle;
+  }
+  i {
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .filter-dropdown-list {
+    text-align: center;
+    margin-top: -30px;
+    float: right;
+    background-color: #fff;
+    border-left: 1px solid #e1e1e1;
+    border-top: 1px solid #e1e1e1;
+    border-right: 1px solid #e1e1e1;
+    z-index: 1000;
+  }
+  span {
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 10px;
+  }
+  i {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 12px;
+  }
+  i.filter-date {
+    padding: 10px 20px;
+    min-width: 380px;
+  }
+  .comment-list {
+    width: 70vw;
+    margin-top: 50px;
+  }
+  .content-header {
+    width: 70vw;
+    height: auto;
+    color: #666;
+    position: relative;
+    margin: 0 auto;
+    margin-top: -30px;
+    box-sizing: content-box;
+    border: 1px solid #e4e4e4;
+  }
+  .user-info{
+    width: 5vw;
+    height: auto;
+    padding-bottom: 20px;
+    text-align: center;
+  }
+  .photo-user-list{
+    margin: 0 auto;
+  }
+  .username-list{
+    /* margin-top: -10px; */
+    margin-bottom: 30px;
+    text-align: center;
+  }
+  .evaluate-list{
+    width: 10vw;
+    height: auto;
+    float: right;
+    margin-right: 4vw;
+    margin-top: -130px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .evaluate-list .evaluate-block {
+    font-size: .85rem;
+    margin-left:5px;
+    cursor: pointer;
+    line-height: 10px;
+    width: 70px;
+    height: 30px;
+    outline: none;
+    margin-top: 10px;
+    border-radius: 10px;
+    background-color: #fff;
+    border: 1px solid #e4e4e4;
+  }
+  .evaluate-list .evaluate-pinglun {
+    width: 70px;
+    height: 30px;
+    margin-top: 10px;
+    margin-left: 5px;
+    background-color: #fff;
+    border-radius: 10px;
+  }
+  .content-overflow {
+    width: 68vw;
+    margin: 0 auto;
+    margin-left: -2vw;
+  }
+  .evaluate {
+    float: right;
+    margin-top: 50%;
+    margin-right: 50px;
+  }
+  .evaluate .evaluate-block {
+    width: 70px;
+    height: 30px;
+    font-size: 12px;
+    margin-left: 10px;
+    border: 1px solid #999;
+    cursor: pointer;
+    margin-top: 40px;
+    line-height: 30px;
+    border-radius: 10px;
+    background-color: #fff;
+    outline: none;
+    border: 1px solid #e4e4e4;
+  }
+  .reply-normal {
+    width: 70vw;
+    border-bottom: 1px solid #eee;
+  }
+  .content-body {
+    width: 50vw;
+    height: auto;
+    color: #666;
+    margin: 0 auto;
+    margin-left: 5vw;
+    margin-top: -130px;
+    border-left: 1px solid #e4e4e4;
+    border-right: 1px solid #e4e4e4;
+  }
+  .content-body-text{
+    width: 50vw;
+    word-wrap:break-word;
+    padding: 10px 10px 0px 10px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .content-body-info {
+    margin-top: 20px;
+    padding-left: 10px;
+  }
+  img {
+    width: 100%;
+  }
+  .info-comment {
+    cursor: pointer;
+  }
+  .content-reply {
+    width: 70vw;
+    margin: 0 auto;
+    border-top: 1px solid #e7e7e7;
+    position: relative;
+    background-color: #fff;
+  }
+  .reply {
+    padding: 20px 20px 10px 20px;
+  }
+  .reply .reply-comment {
+    width: 55vw;
+    margin: 0 auto;
+    border-bottom: none;
+  }
+  .reply-body {
+    margin-top: -50px;
+    margin-left: 8vw;
+  }
+  .reply-overflow {
+    color: #333;
+    position: relative;
+    margin-top: -10px;
+  }
+  .photo-user{
+    margin-left: 5vw;
+  }
+  .reply-body-name em {
+    margin: 0 10px;
+    color: #999;
+  }
+  .reply-body-date {
+    color: #333;
+    line-height: 1.5;
+    margin-top: 10px;
+    padding-left: 10px;
+  }
+  .reply-body-content {
+    width: 47vw;
+    line-height: 2;
+    word-break: break-all;
+    padding:10px 10px 0px 10px;
+  }
+  .btn-reply {
+    position: absolute;
+    right: 0;
+    top: 2px;
+  }
+  .reply-body .reply-comment .action {
+    margin-top: 10px;
+    text-align: right;
+    padding-bottom: 20px;
+  }
 
-.reply-body-date {
-  color: #333;
-  line-height: 1.5;
-  margin-top: 10px;
-  padding-left: 10px;
-}
-.reply-body-content {
-  width: 47vw;
-  line-height: 2;
-  word-break: break-all;
-  padding:10px 10px 0px 10px;
-}
-.btn-reply {
-  position: absolute;
-  right: 0;
-  top: 2px;
-}
-.arrow {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-top: 1px solid #e7e7e7;
-  background-color: #f1f1f1;
-  border-left: 1px solid #e7e7e7;
-  left: -7px;
-  top: 14px;
-  transform: rotate(-45deg);
-}
-.comment-list {
-  width: 68vw;
-}
-.action-answer {
-  width: 60vw;
-  display: flex;
-  justify-content: center;
-  margin: 0 auto;
+  .replay-normal {
+    border-bottom: 1px solid #e7e7e7;
+  }
+  .replay-normal:last-child {
+    border-bottom: none;
+  }
+  .arrow {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    transform: rotate(-45deg);
+  }
+  .comment-list {
+    width: 68vw;
+  }
+  .action {
+    width: 60vw;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+  }
+  .action-answer {
+    width: 60vw;
+    display: flex;
+    justify-content: center;
+    margin: 0 auto;
+    margin-top: 10px;
 
-}
-.comment-submit {
-  width: 70vw;
-  margin-top: 20px;
-}
-.comment-submit #comment {
-  width: 70vw;
-  margin-left: 2vw;
-}
+  }
+  .comment-submit {
+    width: 70vw;
+    margin: 0 auto;
+    margin-top: 20px;
+  }
+  .comment-submit #comment {
+    width: 70vw;
+    margin: 0 auto;
+    margin-left: 2vw;
+  }
 </style>
