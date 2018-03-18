@@ -10,18 +10,9 @@
               <span>{{questionDetail.userName}}</span>
               <span>{{questionDetail.createTime}}</span>
               <span>{{questionDetail.views}}&nbsp;&nbsp;人阅读</span>
-              <span class="answer-num">回答 {{currentAnswers}}</span>
+              <span>{{currentThumbUp}}&nbsp;&nbsp;点赞</span>
+              <span class="answer-num">{{currentAnswers}}&nbsp;&nbsp;回答</span>
               <span>所属分类&nbsp;&nbsp;{{questionDetail.categoryName}}</span>
-            </div>
-            <div class="article-info-evaluate">
-              <div class="evaluate active" @click="signQuestion(1)">
-                <i class="iconfont icon-good"></i>
-                <!-- <em>{{currentThumbUp}}</em> -->
-              </div>
-              <div class="evaluate" @click="signQuestion(-1)">
-                <i class="iconfont icon-bad"></i>
-                <em style="visibility:hidden;">{{currentThumbDown}}</em>
-              </div>
             </div>
           </dd>
         </dl>
@@ -199,21 +190,6 @@
       this.fetchAnswerList();
     },
     methods: {
-      signQuestion(ops) {
-        axios.post(QaAPI.sign_question, {
-            questionId: this.$route.params.id,
-            ops: ops
-          }).then((resp) => {
-            if (ops == 1 && resp.data.code == "00") {
-              this.currentThumbUp += 1;
-            }
-            if (ops == -1 && resp.data.code == "00") {
-              this.currentThumbDown += 1;
-            }
-          }).catch((error) => {
-            this.$Message.error("操作失败【" + error + "】");
-          });
-      },
       fetchQuestionDetail() {
         axios.get(QaAPI.fetch_question_detail, {
             params:{
@@ -305,11 +281,9 @@
               pageSize: this.pageSize
             }
           }).then((resp) => {
-            if (resp.data.code === '000') {
-              answer.commentList = resp.data.elements;
-              answer.isCommentAreaShow = true;
-              answer.isReplyAreaShow = true;
-            }
+            answer.commentList = resp.data.elements;
+            answer.isCommentAreaShow = true;
+            answer.isReplyAreaShow = true;
           }).catch((error) => {
             this.$Message.error("操作失败【" + error + "】");
           });
